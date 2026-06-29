@@ -25,9 +25,10 @@ export default function App() {
   const avisoBateriaDisparadoRef = useRef(false);
 
   useEffect(() => {
-    const lerNivelBateria = async () => {
-      const nivel = await Battery.getBatteryLevelAsync();
-      setNivelBateria(nivel);
+    const lerNivelBateria = async () => { // função assíncrona é um tipo de função que inicia uma tarefa demorada e permite que o restante do programa continue
+                                          //  rodando em paralelo
+      const nivel = await Battery.getBatteryLevelAsync(); //getbatterylevel consultar o nível atual da bateria (faz uma requisição p OS do cllr)
+      setNivelBateria(nivel); //
     };
     lerNivelBateria();
     const assinaturaBateria = Battery.addBatteryLevelListener(({ batteryLevel }) => {
