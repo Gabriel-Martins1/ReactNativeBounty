@@ -20,86 +20,90 @@ export default function App() {
   const [tempoTotalSegundos, setTempoTotalSegundos] = useState(0);
   const [cronometroAtivo, setCronometroAtivo] = useState(false);
 
-  const intervaloRef = useRef(null);
+  const intervaloRef = useRef(null); //useref pode mudar, mas sem atualizar na tela
   const avisoTempoDisparadoRef = useRef(false);
   const avisoBateriaDisparadoRef = useRef(false);
 
   useEffect(() => {
     const lerNivelBateria = async () => { // função assíncrona é um tipo de função que inicia uma tarefa demorada e permite que o restante do programa continue
                                           //  rodando em paralelo
+                                          //isso n funciona mt bem no android pq o android so manda a atualização de bateria a cada mudança significativa 
       const nivel = await Battery.getBatteryLevelAsync(); //getbatterylevel consultar o nível atual da bateria (faz uma requisição p OS do cllr)
-      setNivelBateria(nivel); //
+      setNivelBateria(nivel); //coloca a bateria no setnivelbateria
     };
+    //Roda a função imediatamente para pegar a bateria assim que o app abre
     lerNivelBateria();
-    const assinaturaBateria = Battery.addBatteryLevelListener(({ batteryLevel }) => {
+    const assinaturaBateria = Battery.addBatteryLevelListener(({ batteryLevel }) => { //avisa o app toda vez que a bateria mudar (Listener é tipo um vigia que ve quando muda)
       setNivelBateria(batteryLevel);
     });
+    //le o nivel de bateria a cada 10 segundos. 
     const intervaloBateria = setInterval(lerNivelBateria, 10000);
     return () => {
-      assinaturaBateria.remove();
+      assinaturaBateria.remove(); //esse return existe pra quando o app fechar o app nao coontinuar roubando o processamento do celular e mandando requisição pro sistema operacionar (OS)
       clearInterval(intervaloBateria);
     };
   }, []);
 
   useEffect(() => {
-    const pedirPermissao = async () => {
-      const { status } = await Notifications.requestPermissionsAsync();
-      setPermissaoNotificacao(status);
+    const pedirPermissao = async () => { //função assincrona é um tipo de função que inicia uma tarefa demorada e permite que o restante do programa continue rodando em paralelo
+      const { status } = await Notifications.requestPermissionsAsync(); //aparece na tela a telinha de pedir permissão da notificação 
+      setPermissaoNotificacao(status); //status determina o status da permissão
     };
-    pedirPermissao();
+    pedirPermissao(); 
   }, []);
 
   useEffect(() => {
     if (nivelBateria === null) return; // isso aqui é pq quando vc acaba de abrir o app o nivel de bateria é vazio
     const porcentagem = nivelBateria * 100;  //pega a porcentagem da bateria, pq a baterira normalmente é 0-1.0
-    if (porcentagem < 20 && !avisoBateriaDisparadoRef.current) { A
-      avisoBateriaDisparadoRef.current = true;
-      Notifications.scheduleNotificationAsync({
+    if (porcentagem < 20 && !avisoBateriaDisparadoRef.current) { A //se a porcentagem for menor que 20 e NAO (!) foi enviado o aviso 
+      avisoBateriaDisparadoRef.current = true; //manda o aviso
+      Notifications.scheduleNotificationAsync({   //manda notificação de forma assincrona (significa que o seu aplicativo vai pedir para o celular criar uma notificação,
+                                                  //mas sem travar o restante do aplicativo enquanto esse pedido e processado)
         content: {
           title: 'Bateria baixa!',
-          body: `Sua bateria está em ${Math.round(porcentagem)}%. Considere carregar o celular.`,
+          body: `Sua bateria está em ${Math.round(porcentagem)}%. Considere carregar o celular.`, //arredonda pra nao aparecer 19.99999% de bateria
         },
-        trigger: null,
+        trigger: null, //faz o aviso aparecer na mesma hora
       });
     }
-    if (porcentagem >= 20) { //se bateria 
-      avisoBateriaDisparadoRef.current = false;
+    if (porcentagem >= 20) { //se bateria for maior ou = a 20 
+      avisoBateriaDisparadoRef.current = false; //nao aparece o aviso de bateria
     }
-  }, [nivelBateria]); //dependencia
+  }, [nivelBateria]); //dependencia é o nivel da bateria
 
   const iniciarCronometro = () => {
-    const minutos = parseFloat(minutosInput);
-    if (isNaN(minutos) || minutos <= 0) {
+    const minutos = parseFloat(minutosInput); //parsefloat transforma str em numero
+    if (isNaN(minutos) || minutos <= 0) { //nao é um numero OU minutos é menor ou = a 0
       alert('Digite um número de minutos válido.');
       return; //verificação
     }
-    const totalSegundos = Math.round(minutos * 60);
-    setTempoTotalSegundos(totalSegundos);
-    setSegundosRestantes(totalSegundos);
-    avisoTempoDisparadoRef.current = false;
-    setCronometroAtivo(true);
+    const totalSegundos = Math.round(minutos * 60); //arredonda pra nao ficar 10.555 segundos por ex
+    setTempoTotalSegundos(totalSegundos); //mexe no useState
+    setSegundosRestantes(totalSegundos); //useState
+    avisoTempoDisparadoRef.current = false; //falso pq o cronometro nasce sem disparar um aviso
+    setCronometroAtivo(true); //ativa o cronometro
   };
 
   const pararCronometro = () => {
-    setCronometroAtivo(false);
-    clearInterval(intervaloRef.current);
+    setCronometroAtivo(false); //tira o cronometro do true, desativa ele
+    clearInterval(intervaloRef.current); //clear interval serve para parar e destruir um temporizador
   };
 
   useEffect(() => {
-    if (!cronometroAtivo) return;
-    intervaloRef.current = setInterval(() => {
-      setSegundosRestantes((segundosAnteriores) => {
-        const proximoValor = segundosAnteriores - 1;
-        if (proximoValor <= 0) {
-          clearInterval(intervaloRef.current);
-          setCronometroAtivo(false);
-          return 0;
+    if (!cronometroAtivo) return; //verificacao, se n tiver ativo n ve esse useffect 
+    intervaloRef.current = setInterval(() => { 
+      setSegundosRestantes((segundosAnteriores) => { 
+        const proximoValor = segundosAnteriores - 1; //proximo valor é o segundo anterior -1
+        if (proximoValor <= 0) {  //se o proximo valor (segundo anterior -1) for menor ou igual a 0:
+          clearInterval(intervaloRef.current); //limpa o intervalo
+          setCronometroAtivo(false); //Desativa o cronometro
+          return 0; //volta a ser 0
         }
-        const limiteAviso = tempoTotalSegundos * 0.1;
-        if (proximoValor <= limiteAviso && !avisoTempoDisparadoRef.current) {
-          avisoTempoDisparadoRef.current = true;
-          Vibration.vibrate([0, 300, 150, 300]);
-          Notifications.scheduleNotificationAsync({
+        const limiteAviso = tempoTotalSegundos * 0.1; // o aviso é 10% do vaor total q eu coloquei lá 
+        if (proximoValor <= limiteAviso && !avisoTempoDisparadoRef.current) { //se o proximovalor for menor ou igual o limite e o aviso nao foo desparado ainda:
+          avisoTempoDisparadoRef.current = true; //ativa o aviso 
+          Vibration.vibrate([0, 300, 150, 300]); // vibra, para por um tempo, vibra dnv (no IOS ele vibra por 4MS, depois para e depois vibra por 4MS dnv)
+          Notifications.scheduleNotificationAsync({ //aparece a notificação 
             content: {
               title: 'Tempo quase acabando!',
               body: 'Faltam poucos minutos para o fim da sua sessão de estudo.',
@@ -109,9 +113,9 @@ export default function App() {
         }
         return proximoValor;
       });
-    }, 1000);
-    return () => clearInterval(intervaloRef.current);
-  }, [cronometroAtivo, tempoTotalSegundos]);
+    }, 1000); //lê de 1 em 1 segundo 
+    return () => clearInterval(intervaloRef.current); //se fechar a aba o cronometro para de rodar
+  }, [cronometroAtivo, tempoTotalSegundos]); //dependencias
 
   const minutosExibicao = Math.floor(segundosRestantes / 60);
   const segundosExibicao = segundosRestantes % 60;
